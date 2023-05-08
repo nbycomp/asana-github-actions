@@ -68,10 +68,10 @@ async function action() {
     ACTION = core.getInput("action", { required: true }),
     TRIGGER_PHRASE = core.getInput("trigger-phrase") || "",
     PULL_REQUEST = github.context.payload.pull_request,
-    //REGEX_STRING = `${TRIGGER_PHRASE}(?:\\s*)https:\\/\\/app.asana.com\\/(\\d+)\\/(?<project>\\d+)\\/(?<task>\\d+)`,
-    REGEX_STRING = `^${TRIGGER_PHRASE}(?:\\s*)https:\\/\\/app.asana.com\\/(\\d+)\\/(?<project>\\d+)\\/(?<task>\\d+)\\/.\\s*^-\\s\\[x] close on merge$`,
-    REGEX = new RegExp(REGEX_STRING, "m");
-  //REGEX_COMPLETE_TASK = new RegExp(REGEX_COMPLETE_TASK_STRING);
+    REGEX_STRING =
+      `^${TRIGGER_PHRASE}\\s*https:\\/\\/app.asana.com\\/(\\d+)\\/(?<project>\\d+)\\/(?<task>\\d+)\\/.\\s*` +
+      `^(?<close>-\\s\\[x]\\s*close on merge|)`, // match either "[x] close on merge" OR empty string
+    REGEX = new RegExp(REGEX_STRING, "gm");
 
   console.log("pull_request", PULL_REQUEST);
 
@@ -81,7 +81,7 @@ async function action() {
   }
 
   console.info("looking in body", PULL_REQUEST.body, "regex", REGEX_STRING);
-  let foundAsanaTasks = [];
+  let foundAsanaTasks = []; // [x] close on merge // [] close on merge
   while ((parseAsanaURL = REGEX.exec(PULL_REQUEST.body)) !== null) {
     const taskId = parseAsanaURL.groups.task;
     if (!taskId) {
@@ -90,11 +90,14 @@ async function action() {
       );
       continue;
     }
-    foundAsanaTasks.push(taskId);
+    foundAsanaTasks.push({
+      taskId,
+      closeOnMerge: !!parseAsanaURL.groups.close,
+    });
   }
   console.info(
     `found ${foundAsanaTasks.length} taskIds:`,
-    foundAsanaTasks.join(",")
+    foundAsanaTasks.map((t) => t.taskId).join(", ")
   );
 
   console.info("calling", ACTION);
@@ -123,7 +126,7 @@ async function action() {
         htmlText = core.getInput("text", { required: true }),
         isPinned = core.getInput("is-pinned") === "true";
       const comments = [];
-      for (const taskId of foundAsanaTasks) {
+      for (const { taskId } of foundAsanaTasks) {
         if (commentId) {
           const comment = await findComment(client, taskId, commentId);
           if (comment) {
@@ -145,7 +148,7 @@ async function action() {
     case "remove-comment": {
       const commentId = core.getInput("comment-id", { required: true });
       const removedCommentIds = [];
-      for (const taskId of foundAsanaTasks) {
+      for (const { taskId } of foundAsanaTasks) {
         const comment = await findComment(client, taskId, commentId);
         if (comment) {
           console.info("removing comment", comment.gid);
@@ -162,7 +165,8 @@ async function action() {
     case "complete-task": {
       const isComplete = core.getInput("is-complete") === "true";
       const taskIds = [];
-      for (const taskId of foundAsanaTasks) {
+      for (const { taskId, closeOnMerge } of foundAsanaTasks) {
+        if (!closeOnMerge) continue;
         console.info(
           "marking task",
           taskId,
@@ -183,7 +187,7 @@ async function action() {
       const targetJSON = core.getInput("targets", { required: true });
       const targets = JSON.parse(targetJSON);
       const movedTasks = [];
-      for (const taskId of foundAsanaTasks) {
+      for (const { taskId } of foundAsanaTasks) {
         await moveSection(client, taskId, targets);
         movedTasks.push(taskId);
       }
