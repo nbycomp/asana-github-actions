@@ -1,4 +1,3 @@
-
 # Github-Asana action
 
 This action integrates asana with github.
@@ -40,10 +39,12 @@ This action integrates asana with github.
 
 ### `targets`
 
-**Required for `move-section`** JSON array of objects having project and section where to move current task. Move task only if it exists in target project. e.g 
+**Required for `move-section`** JSON array of objects having project and section where to move current task. Move task only if it exists in target project. e.g
+
 ```yaml
 targets: '[{"project": "Backlog", "section": "Development Done"}, {"project": "Current Sprint", "section": "In Review"}]'
 ```
+
 if you don't want to move task omit `targets`.
 
 ### `link-required`
@@ -71,7 +72,7 @@ jobs:
         if: github.event.pull_request.merged
         with:
           asana-pat: ${{ secrets.ASANA_PAT }}
-          action: 'move-section'
+          action: "move-section"
           targets: '[{"project": "Engineering scrum", "section": "Done"}]'
 ```
 
@@ -91,9 +92,9 @@ jobs:
       - uses: everphone-gmbh/github-asana-action
         with:
           asana-pat: ${{ secrets.ASANA_PAT }}
-          action: 'add-comment'
+          action: "add-comment"
           comment-id: "#pr:${{env.PR_NUMBER}}"
-          text: 'View Pull Request: https://github.com/everphone-gmbh/frontend-symfony/pull/${{env.PR_NUMBER}}'
+          text: "View Pull Request: https://github.com/everphone-gmbh/frontend-symfony/pull/${{env.PR_NUMBER}}"
           is-pinned: true
 ```
 
@@ -114,7 +115,7 @@ jobs:
         if: github.event.pull_request.merged
         with:
           asana-pat: ${{ secrets.ASANA_PAT }}
-          action: 'remove-comment'
+          action: "remove-comment"
           comment-id: "#pr:${{env.PR_NUMBER}}"
 ```
 
@@ -154,6 +155,19 @@ jobs:
         if: github.event.pull_request.merged
         with:
           asana-pat: ${{ secrets.ASANA_PAT }}
-          action: 'complete-task'
+          action: "complete-task"
           is-complete: true
 ```
+
+## Testing
+
+Tests can be run using `npm test`.
+
+The tests connect to a running instance of Asana, and create/modify tasks inside a project
+called "Asana bot test environment". This project must be created in advance,
+with two sections: "New" and "Done".
+
+The following environment variables must be set:
+
+ASANA_PAT: your Personal Access Token
+ASANA_PROJECT_ID: The ID of the project "Asana bot test environment"
