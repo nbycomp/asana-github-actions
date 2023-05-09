@@ -54,6 +54,25 @@ async function addComment(client, taskId, commentId, text, isPinned) {
   }
 }
 
+async function updateCustomField(client, taskId, fieldName, content) {
+  const task = await client.tasks.findById(taskId);
+  const targetCustomField = task.custom_fields.find(
+    (field) => field.name === fieldName
+  );
+  if (!targetCustomField) {
+    core.info(`The custom field "${fieldName}" does not exist in project`);
+    return;
+  }
+  try {
+    await client.tasks.update(taskId, {
+      custom_fields: { [targetCustomField.gid]: content },
+    });
+    core.info(`Custom fields ${fieldName} updated to: ${content}`);
+  } catch (error) {
+    core.error("Error updating custom field ${fieldName}: ", error);
+  }
+}
+
 async function buildClient(asanaPAT) {
   return asana.Client.create({
     defaultHeaders: { "asana-enable": "new-sections,string_ids" },
@@ -192,6 +211,16 @@ async function action() {
         movedTasks.push(taskId);
       }
       return movedTasks;
+    }
+    case "update-custom-field": {
+      const content = core.getInput("content", { required: true });
+      const fieldName = core.getInput("field-name", { required: true });
+      const updatedTasks = [];
+      for (const { taskId } of foundAsanaTasks) {
+        await updateCustomField(client, taskId, fieldName, content);
+        updatedTasks.push(taskId);
+      }
+      return updatedTasks;
     }
     default:
       core.setFailed("unexpected action ${ACTION}");

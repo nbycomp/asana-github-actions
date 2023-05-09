@@ -188,4 +188,28 @@ https://app.asana.com/0/${projectId}/${task.gid}
     const actualTask = await client.tasks.findById(task.gid);
     expect(actualTask.completed).toBe(true);
   });
+
+  test("updating custom field content of a task", async () => {
+    inputs = {
+      "asana-pat": asanaPAT,
+      action: "update-custom-field",
+      "field-name": "Github PR",
+      "trigger-phrase": "Implement",
+      content: "https://this-is-a-pr-link.com/",
+    };
+    github.context.payload = {
+      pull_request: {
+        body: defaultBody,
+      },
+    };
+
+    await expect(action.action()).resolves.toHaveLength(1);
+    const actualTask = await client.tasks.findById(task.gid);
+    expect(actualTask.custom_fields).toContainEqual(
+      expect.objectContaining({
+        name: "Github PR",
+        display_value: "https://this-is-a-pr-link.com/",
+      })
+    );
+  });
 });
