@@ -54,7 +54,7 @@ describe("asana github actions", () => {
   });
 
   afterAll(async () => {
-    await client.tasks.delete(task);
+    await client.tasks.delete(task.gid);
   });
 
   beforeEach(() => {
