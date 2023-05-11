@@ -5,6 +5,7 @@ const github = require("@actions/github");
 describe("asana github actions", () => {
   let inputs = {};
   let defaultBody;
+  let mergeBody;
   let client;
   let task;
 
@@ -51,6 +52,13 @@ describe("asana github actions", () => {
     });
 
     defaultBody = `Implement https://app.asana.com/0/${projectId}/${task.gid} in record time`;
+    mergeBody = `<!--Paste a link to the Asana ticket-->
+<!--Cross the checkbox to indicate that you want to close the Asana Task when the PR is merged-->
+**Asana Task:**
+https://app.asana.com/0/${projectId}/${task.gid}
+
+- [x] close on merge
+`;
   });
 
   afterAll(async () => {
@@ -174,13 +182,7 @@ describe("asana github actions", () => {
     };
     github.context.payload = {
       pull_request: {
-        body: `<!--Paste a link to the Asana ticket-->
-<!--Cross the checkbox to indicate that you want to close the Asana Task when the PR is merged-->
-**Asana Task:**
-https://app.asana.com/0/${projectId}/${task.gid}
-
-- [x] close on merge
-`,
+        body: mergeBody,
       },
     };
 
@@ -188,8 +190,7 @@ https://app.asana.com/0/${projectId}/${task.gid}
     const actualTask = await client.tasks.findById(task.gid);
     expect(actualTask.completed).toBe(true);
   });
-
-  test("updating custom field content of a task", async () => {
+  test("updating Github PR field content of a task", async () => {
     inputs = {
       "asana-pat": asanaPAT,
       action: "update-custom-field",
@@ -209,6 +210,28 @@ https://app.asana.com/0/${projectId}/${task.gid}
       expect.objectContaining({
         name: "Github PR",
         display_value: "https://this-is-a-pr-link.com/",
+      })
+    );
+  });
+  test("updating Task Progress field of a task", async () => {
+    inputs = {
+      "asana-pat": asanaPAT,
+      action: "change-task-progress",
+      "trigger-phrase": "\\*\\*Asana Task:\\*\\*",
+      state: "Waiting",
+    };
+    github.context.payload = {
+      pull_request: {
+        body: mergeBody,
+      },
+    };
+
+    await expect(action.action()).resolves.toHaveLength(1);
+    const actualTask = await client.tasks.findById(task.gid);
+    expect(actualTask.custom_fields).toContainEqual(
+      expect.objectContaining({
+        name: "Task Progress",
+        display_value: "Waiting",
       })
     );
   });

@@ -63,13 +63,27 @@ async function updateCustomField(client, taskId, fieldName, content) {
     core.info(`The custom field "${fieldName}" does not exist in project`);
     return;
   }
-  try {
-    await client.tasks.update(taskId, {
-      custom_fields: { [targetCustomField.gid]: content },
-    });
-    core.info(`Custom fields ${fieldName} updated to: ${content}`);
-  } catch (error) {
-    core.error("Error updating custom field ${fieldName}: ", error);
+  if (targetCustomField.display_value != content) {
+    try {
+      if (targetCustomField.type == "enum") {
+        const enum_option = targetCustomField.enum_options.find(
+          (opt) => opt.name === content
+        );
+        if (enum_option == null) {
+          throw new Error("Enum option not found");
+        }
+        custom_field_updated = { [targetCustomField.gid]: enum_option.gid };
+      } else {
+        custom_field_updated = { [targetCustomField.gid]: content };
+      }
+
+      await client.tasks.update(taskId, {
+        custom_fields: custom_field_updated,
+      });
+      core.info(`Custom fields ${fieldName} updated to: ${content}`);
+    } catch (error) {
+      core.error("Error updating custom field ", fieldName, " :", error);
+    }
   }
 }
 
@@ -221,6 +235,16 @@ async function action() {
         updatedTasks.push(taskId);
       }
       return updatedTasks;
+    }
+    case "change-task-progress": {
+      const state = core.getInput("state", { required: true });
+      const taskIds = [];
+      for (const { taskId, closeOnMerge } of foundAsanaTasks) {
+        if (!closeOnMerge) continue;
+        await updateCustomField(client, taskId, "Task Progress", state);
+        taskIds.push(taskId);
+      }
+      return taskIds;
     }
     default:
       core.setFailed("unexpected action ${ACTION}");
