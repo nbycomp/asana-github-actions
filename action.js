@@ -5,26 +5,31 @@ const asana = require("asana");
 async function moveSection(client, taskId, targets) {
   const task = await client.tasks.findById(taskId);
 
-  targets.forEach(async (target) => {
-    const targetProject = task.projects.find(
-      (project) => project.name === target.project
-    );
-    if (!targetProject) {
-      core.info(`This task does not exist in "${target.project}" project`);
-      return;
-    }
-    let targetSection = await client.sections
-      .findByProject(targetProject.gid)
-      .then((sections) =>
-        sections.find((section) => section.name === target.section)
+  return Promise.all(
+    targets.map(async (target) => {
+      const targetProject = task.projects.find(
+        (project) => project.name === target.project
       );
-    if (targetSection) {
-      await client.sections.addTask(targetSection.gid, { task: taskId });
-      core.info(`Moved to: ${target.project}/${target.section}`);
-    } else {
-      core.error(`Asana section ${target.section} not found.`);
-    }
-  });
+      if (!targetProject) {
+        core.info(`This task does not exist in "${target.project}" project`);
+        return;
+      }
+      const targetSection = await client.sections
+        .findByProject(targetProject.gid)
+        .then((sections) =>
+          sections.find((section) => section.name === target.section)
+        );
+      if (targetSection) {
+        return client.sections
+          .addTask(targetSection.gid, { task: taskId })
+          .then(() =>
+            core.info(`Moved to: ${target.project}/${target.section}`)
+          );
+      } else {
+        core.error(`Asana section ${target.section} not found.`);
+      }
+    })
+  );
 }
 
 async function findComment(client, taskId, commentId) {
@@ -237,6 +242,10 @@ async function action() {
       return updatedTasks;
     }
     case "change-task-progress": {
+      core.warning(
+        "Setting the custom Task Progress field is deprecated!\n" +
+          "Instead, move the task to the appropriate section using the `move-section` action."
+      );
       const state = core.getInput("state", { required: true });
       const taskIds = [];
       for (const { taskId, closeOnMerge } of foundAsanaTasks) {
