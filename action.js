@@ -46,7 +46,7 @@ async function moveSection(client, taskId, targets) {
         return client.sections
           .addTask(targetSection.gid, { task: taskId })
           .then(() =>
-            core.info(`Moved to: ${target.project}/${target.section}`)
+            core.info(`Moved to: ${targetProject.name}/${target.section}`)
           );
       } else {
         core.error(`Asana section ${target.section} not found.`);
