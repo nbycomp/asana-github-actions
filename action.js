@@ -7,13 +7,36 @@ async function moveSection(client, taskId, targets) {
 
   return Promise.all(
     targets.map(async (target) => {
-      const targetProject = task.projects.find(
-        (project) => project.name === target.project
-      );
-      if (!targetProject) {
-        core.info(`This task does not exist in "${target.project}" project`);
-        return;
+      let targetProject;
+
+      if (target.projectId) {
+        core.info(
+          `Checking that task exists within project ID "${target.projectId}"`
+        );
+        targetProject = task.projects.find(
+          (project) => project.gid === target.projectId
+        );
+        if (!targetProject) {
+          core.info(
+            `This task does not exist in project with ID "${target.projectId}"`
+          );
+          return;
+        }
+      } else if (target.project) {
+        core.info(
+          `Checking that task exists within project ID "${target.projectId}"`
+        );
+        targetProject = task.projects.find(
+          (project) => project.name === target.project
+        );
+        if (!targetProject) {
+          core.info(`This task does not exist in "${target.project}" project`);
+          return;
+        }
+      } else {
+        core.error(`expected property "project" or "projectId", found neither`);
       }
+
       const targetSection = await client.sections
         .findByProject(targetProject.gid)
         .then((sections) =>
@@ -128,8 +151,16 @@ async function action() {
       );
       continue;
     }
+    const projectId = parseAsanaURL.groups.project;
+    if (!projectId) {
+      core.error(
+        `Invalid Asana task URL after the trigger phrase ${TRIGGER_PHRASE}`
+      );
+      continue;
+    }
     foundAsanaTasks.push({
       taskId,
+      projectId,
       closeOnMerge: !!parseAsanaURL.groups.close,
     });
   }
@@ -222,6 +253,15 @@ async function action() {
       return taskIds;
     }
     case "move-section": {
+      const section = core.getInput("targetSection", { required: true });
+      const movedTasks = [];
+      for (const { taskId, projectId } of foundAsanaTasks) {
+        await moveSection(client, taskId, [{ section, projectId }]);
+        movedTasks.push(taskId);
+      }
+      return movedTasks;
+    }
+    case "move-sections": {
       const targetJSON = core.getInput("targets", { required: true });
       const targets = JSON.parse(targetJSON);
       const movedTasks = [];
