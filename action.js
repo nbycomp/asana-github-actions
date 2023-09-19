@@ -78,7 +78,7 @@ async function addComment(client, taskId, commentId, text, isPinned) {
     });
     return comment;
   } catch (error) {
-    console.error("rejecting promise", error);
+    core.error("rejecting promise", error);
   }
 }
 
@@ -134,14 +134,12 @@ async function action() {
       `(?<close>^-\\s\\[x]\\s*close on merge|)`, // match either "[x] close on merge" OR empty string
     REGEX = new RegExp(REGEX_STRING, "gm");
 
-  console.log("pull_request", PULL_REQUEST);
-
   const client = await buildClient(ASANA_PAT);
   if (client === null) {
     throw new Error("client authorization failed");
   }
 
-  console.info("looking in body", PULL_REQUEST.body, "regex", REGEX_STRING);
+  core.info("looking in body", PULL_REQUEST.body, "regex", REGEX_STRING);
   let foundAsanaTasks = []; // [x] close on merge // [] close on merge
   while ((parseAsanaURL = REGEX.exec(PULL_REQUEST.body)) !== null) {
     const taskId = parseAsanaURL.groups.task;
@@ -164,12 +162,12 @@ async function action() {
       closeOnMerge: !!parseAsanaURL.groups.close,
     });
   }
-  console.info(
+  core.info(
     `found ${foundAsanaTasks.length} taskIds:`,
     foundAsanaTasks.map((t) => t.taskId).join(", ")
   );
 
-  console.info("calling", ACTION);
+  core.info("calling", ACTION);
   switch (ACTION) {
     case "assert-link": {
       const githubToken = core.getInput("github-token", { required: true });
@@ -199,7 +197,7 @@ async function action() {
         if (commentId) {
           const comment = await findComment(client, taskId, commentId);
           if (comment) {
-            console.info("found existing comment", comment.gid);
+            core.info("found existing comment", comment.gid);
             continue;
           }
         }
@@ -220,11 +218,11 @@ async function action() {
       for (const { taskId } of foundAsanaTasks) {
         const comment = await findComment(client, taskId, commentId);
         if (comment) {
-          console.info("removing comment", comment.gid);
+          core.info("removing comment", comment.gid);
           try {
             await client.stories.delete(comment.gid);
           } catch (error) {
-            console.error("rejecting promise", error);
+            core.error("rejecting promise", error);
           }
           removedCommentIds.push(comment.gid);
         }
@@ -236,7 +234,7 @@ async function action() {
       const taskIds = [];
       for (const { taskId, closeOnMerge } of foundAsanaTasks) {
         if (!closeOnMerge) continue;
-        console.info(
+        core.info(
           "marking task",
           taskId,
           isComplete ? "complete" : "incomplete"
@@ -246,7 +244,7 @@ async function action() {
             completed: isComplete,
           });
         } catch (error) {
-          console.error("rejecting promise", error);
+          core.error("rejecting promise", error);
         }
         taskIds.push(taskId);
       }
