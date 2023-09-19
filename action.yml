@@ -24,7 +24,13 @@ inputs:
     required: false
     default: false
   targets:
-    description: 'JSON array of objects having project and section where to move current task. Move task only if it exists in target project.'
+    description: >
+      JSON array of objects having project and section where to move current task.
+      Move task only if it exists in target project.
+      Use with "move-sections" action.
+    required: false
+  targetSection:
+    description: 'Name of section to move Asana task to. Use with "move-section" action'
     required: false
   link-required:
     description: 'When set to true will fail pull requests without an asana link'
@@ -33,7 +39,7 @@ inputs:
     description: 'Is the task complete'
     required: false
 branding:
-  icon: 'chevron-right'  
+  icon: 'chevron-right'
   color: 'gray-dark'
 runs:
   using: 'node12'
