@@ -185,10 +185,10 @@ jobs:
       - uses: nbycomp/asana-github-actions@master
         with:
           asana-pat: ${{ secrets.ASANA_TOKEN }}
-          action: 'update-custom-field'
+          action: "update-custom-field"
           field-name: "Github PR"
           trigger-phrase: "\\*\\*Asana Task:\\*\\*"
-          content: 'https://github.com/${{github.repository}}/pull/${{github.event.pull_request.number}}'
+          content: "https://github.com/${{github.repository}}/pull/${{github.event.pull_request.number}}"
 ```
 
 ```yaml
@@ -206,9 +206,9 @@ jobs:
       - uses: nbycomp/asana-github-actions@master
         with:
           asana-pat: ${{ secrets.ASANA_TOKEN }}
-          action: 'change-task-progress'
+          action: "change-task-progress"
           trigger-phrase: "\\*\\*Asana Task:\\*\\*"
-          state: 'Waiting'
+          state: "Waiting"
 ```
 
 ## Testing
@@ -217,7 +217,7 @@ Tests can be run using `npm test`.
 
 The tests connect to a running instance of Asana, and create/modify tasks inside a project
 called "Asana bot test environment". This project must be created in advance,
-with two sections: "New" and "Done".
+with three sections: "Todo", "Waiting" and "Done".
 
 The following environment variables must be set:
 

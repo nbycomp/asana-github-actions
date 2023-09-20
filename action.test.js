@@ -148,29 +148,79 @@ https://app.asana.com/0/${projectId}/${task.gid}
     await expect(action.action()).resolves.toHaveLength(1);
   });
 
-  test("moving sections", async () => {
-    inputs = {
-      "asana-pat": asanaPAT,
-      action: "move-section",
-      targets: '[{"project": "Asana bot test environment", "section": "Done"}]',
-      "trigger-phrase": "Implement",
-    };
-    github.context.payload = {
-      pull_request: {
-        body: defaultBody,
-      },
-    };
+  describe("moving sections by project name", () => {
+    for (const section of ["Todo", "Waiting", "Done"]) {
+      test("moving to section: " + section, async () => {
+        github.context.payload = {
+          pull_request: {
+            body: defaultBody,
+          },
+        };
 
-    await expect(action.action()).resolves.toHaveLength(1);
+        inputs = {
+          "asana-pat": asanaPAT,
+          action: "move-sections",
+          targets: JSON.stringify([
+            { project: "Asana bot test environment", section },
+          ]),
+          "trigger-phrase": "Implement",
+        };
 
-    inputs = {
-      "asana-pat": asanaPAT,
-      action: "move-section",
-      targets: '[{"project": "Asana bot test environment", "section": "New"}]',
-      "trigger-phrase": "Implement",
-    };
+        await expect(action.action()).resolves.toHaveLength(1);
+        return client.tasks.findById(task.gid).then((task) => {
+          expect(task.memberships).toHaveLength(1);
+          expect(task.memberships[0].section.name).toBe(section);
+        });
+      });
+    }
+  });
 
-    await expect(action.action()).resolves.toHaveLength(1);
+  describe("moving sections by project ID", () => {
+    for (const section of ["Todo", "Waiting", "Done"]) {
+      test("moving to section: " + section, async () => {
+        github.context.payload = {
+          pull_request: {
+            body: defaultBody,
+          },
+        };
+
+        inputs = {
+          "asana-pat": asanaPAT,
+          action: "move-sections",
+          targets: JSON.stringify([{ projectId, section }]),
+          "trigger-phrase": "Implement",
+        };
+
+        await expect(action.action()).resolves.toHaveLength(1);
+        return client.tasks.findById(task.gid).then((task) => {
+          expect(task.memberships).toHaveLength(1);
+          expect(task.memberships[0].section.name).toBe(section);
+        });
+      });
+    }
+  });
+
+  describe("move section", () => {
+    test("move section using project ID from link", async () => {
+      github.context.payload = {
+        pull_request: {
+          body: defaultBody,
+        },
+      };
+
+      inputs = {
+        "asana-pat": asanaPAT,
+        action: "move-section",
+        targetSection: "Waiting",
+        "trigger-phrase": "Implement",
+      };
+
+      await expect(action.action()).resolves.toHaveLength(1);
+      return client.tasks.findById(task.gid).then((task) => {
+        expect(task.memberships).toHaveLength(1);
+        expect(task.memberships[0].section.name).toBe("Waiting");
+      });
+    });
   });
 
   test("completing task", async () => {
@@ -190,6 +240,7 @@ https://app.asana.com/0/${projectId}/${task.gid}
     const actualTask = await client.tasks.findById(task.gid);
     expect(actualTask.completed).toBe(true);
   });
+
   test("updating Github PR field content of a task", async () => {
     inputs = {
       "asana-pat": asanaPAT,
@@ -213,6 +264,7 @@ https://app.asana.com/0/${projectId}/${task.gid}
       })
     );
   });
+
   test("updating Task Progress field of a task", async () => {
     inputs = {
       "asana-pat": asanaPAT,
